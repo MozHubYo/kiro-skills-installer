@@ -4,10 +4,10 @@
 
 ## 這個 Repo 解決什麼？
 
-- **UI/UX PRO MAX**：官方 CLI 支援 Kiro，但學員常遇到不知道要加 `--global` 旗標
-- **Playwright CLI**：官方 `playwright-cli install --skills` 只會裝到 Claude Code、Copilot 的目錄，Kiro 的 `~/.kiro/skills/` 會被忽略
+- **UI/UX PRO MAX**：`uipro init --ai kiro` 其實產的是 **Steering** 檔案（放在 `.kiro/steering/`），Kiro 的 **Skills** 面板根本掃不到。正確做法是用 `--ai codex`，拿到 Agent Skills 格式（`SKILL.md` + YAML front-matter）再搬到 `~/.kiro/skills/`。
+- **Playwright CLI**：官方 `playwright-cli install --skills` 只會裝到 Claude Code、Copilot 的目錄，Kiro 的 `~/.kiro/skills/` 會被忽略。
 
-本 repo 的腳本會呼叫上游官方工具，再補上 Kiro 的那段，學員不需要手動處理。
+本 repo 的腳本會呼叫上游官方工具，再補上 Kiro 的那段，並在安裝後驗證 `SKILL.md` 有正確的 YAML front-matter，學員不需要手動處理。
 
 ## 支援平台
 
@@ -57,7 +57,9 @@ curl -fsSL https://raw.githubusercontent.com/MozHubYo/kiro-skills-installer/main
 
 1. 確認 `node` 和 `npm` 存在
 2. `npm install -g uipro-cli`
-3. `uipro init --ai kiro --global`（裝到 `~/.kiro/skills/ui-ux-pro-max/`）
+3. 在暫存資料夾跑 `uipro init --ai codex --force`（產出 Agent Skills 格式到 `.codex/skills/ui-ux-pro-max/`）
+4. 複製到 `~/.kiro/skills/ui-ux-pro-max/`
+5. 驗證 `SKILL.md` 存在且開頭有 YAML front-matter（`name`、`description`），否則 abort
 
 ### `install-playwright-cli.*`
 

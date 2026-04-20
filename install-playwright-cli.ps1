@@ -2,7 +2,9 @@
 # Install Playwright CLI skill for Kiro IDE (Windows)
 # Upstream: https://github.com/microsoft/playwright-cli
 
-$ErrorActionPreference = 'Stop'
+# Use Continue so that native tool progress messages written to stderr do not
+# abort the script. We check $LASTEXITCODE explicitly after each external call.
+$ErrorActionPreference = 'Continue'
 
 function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg)   { Write-Host "[OK] $msg" -ForegroundColor Green }
@@ -20,7 +22,7 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 Write-Ok ("node {0}, npm {1}" -f (node --version), (npm --version))
 
 Write-Step 'Installing @playwright/cli globally'
-npm install -g '@playwright/cli@latest'
+npm install -g '@playwright/cli@latest' 2>&1 | ForEach-Object { "$_" } | Out-Host
 if ($LASTEXITCODE -ne 0) { Write-Err 'Failed to install @playwright/cli'; exit 1 }
 
 # `playwright-cli install --skills` installs into the CURRENT working directory
@@ -31,7 +33,7 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 try {
     Push-Location $stage
     Write-Step 'Running: playwright-cli install --skills'
-    playwright-cli install --skills
+    playwright-cli install --skills 2>&1 | ForEach-Object { "$_" } | Out-Host
     if ($LASTEXITCODE -ne 0) { Write-Err 'playwright-cli install --skills failed'; exit 1 }
 
     $candidates = @(
@@ -46,6 +48,12 @@ try {
         $candidates | ForEach-Object { Write-Host "  - $_" }
         exit 1
     }
+
+    $sourceSkillMd = Join-Path $source 'SKILL.md'
+    if (-not (Test-Path $sourceSkillMd)) {
+        Write-Err "Generated folder is missing SKILL.md at $sourceSkillMd"
+        exit 1
+    }
     Write-Step "Mirroring skill from: $source"
 
     Pop-Location
@@ -58,6 +66,23 @@ try {
     if (Get-Location | Where-Object { $_.Path -eq $stage }) { Pop-Location }
     if (Test-Path $stage) { Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue }
 }
+
+Write-Step 'Verifying installed skill'
+$installedSkillMd = Join-Path $target 'SKILL.md'
+if (-not (Test-Path $installedSkillMd)) {
+    Write-Err "SKILL.md not found at $installedSkillMd"
+    exit 1
+}
+$head = Get-Content $installedSkillMd -TotalCount 10 -ErrorAction Stop
+$hasOpen = ($head -match '^---\s*$').Count -ge 1
+$hasName = ($head -match '^name:\s*\S+').Count -ge 1
+$hasDesc = ($head -match '^description:\s*\S+').Count -ge 1
+if (-not ($hasOpen -and $hasName -and $hasDesc)) {
+    Write-Err 'SKILL.md is missing required YAML front-matter (name / description).'
+    Write-Err 'Kiro Skills panel will NOT detect this skill. Aborting.'
+    exit 1
+}
+Write-Ok 'SKILL.md has valid YAML front-matter (name, description)'
 
 Write-Ok "Installed to $target"
 Write-Host ''
